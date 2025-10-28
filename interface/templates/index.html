@@ -1,22 +1,20 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interpretador MiniPar</title>
+    <title>MiniPar 2025.1 </title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Interpretador MiniPar</h1>
-        <form id="code-form" method="POST" action="/run">
-            <textarea name="code" id="code" placeholder="Digite seu código MiniPar aqui..." required></textarea>
-            <button type="submit">Executar</button>
-        </form>
-        <div id="output">
-            <h2>Saída:</h2>
-            <pre id="result">{{ result }}</pre>
-        </div>
+        <h1>MiniPar 2025.1 </h1>
+
+        <div id="editor" contenteditable="true" spellcheck="false" placeholder="Digite seu código MiniPar aqui..."></div>
+        <button id="executar">Executar</button>
+
+        <h2>Saída:</h2>
+        <pre id="saida"></pre>
     </div>
+    <script src="/static/script.js"></script>
 </body>
 </html>
