@@ -13,7 +13,7 @@ class LexerError(Exception): pass
 
 class Lexer:
     TOKEN_SPEC = [
-        ("NUMBER", r"\d+"),
+        ("NUMBER", r"\d+(\.\d+)?"),
         ("STRING", r"\"(\\.|[^\"])*\""),
         ("ID", r"[A-Za-z_][A-Za-z0-9_]*"),
         ("MULTICOMMENT", r"/\*[\s\S]*?\*/"), #multicomentarios
