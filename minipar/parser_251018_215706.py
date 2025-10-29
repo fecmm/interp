@@ -1,7 +1,6 @@
 from typing import List
-from minipar.lexer_251018_215612 import Token, Lexer
-from minipar.ast_251018_215806 import *
-
+from lexer_251018_215612 import Token, Lexer
+from ast_251018_215806 import *
 
 class ParserError(Exception): pass
 class Parser:
@@ -42,31 +41,30 @@ class Parser:
         if self.peek().type == "EXTENDS": 
             self.next()
             base = self.expect("ID").value
-        self.expect("{")
+        self.expect_symbol("{", "Esperado '{' para iniciar a classe")
         fields = []
         methods = []
-        while self.peek().type != "}":
+        while self.peek().type != "OP" or self.peek().value != "}":
             if self.peek().type == "VAR": 
-                fields.append(self.parse_var_decl(require_semicolon=False)) 
+                fields.append(self.parse_var_decl())
             elif self.peek().type == "FUNC": 
                 methods.append(self.parse_func_decl())
             else:
-                raise ParserError(f"Unexpected token in class body: {self.peek().type}")
-        self.expect("}")
+                raise ParserError(f"Unexpected token in class body: {self.peek().type} ('{self.peek().value}')")
+        self.expect_symbol("}", "Esperado '}' para fechar a classe")
         return ClassDecl(name, base, fields, methods)
 
-    # def parse_var_decl(self, require_semicolon=False) -> VarDecl:
-    def parse_var_decl(self) -> VarDecl: #retirei um parametro que nao estava sendo usada, se der algum problema pode ser aqui
+    def parse_var_decl(self) -> VarDecl:
         if self.peek().type == "VAR":
             self.expect("VAR")
         name = self.expect("ID").value
-        self.expect(":")
+        self.expect_symbol(":", "Esperado ':' para tipo")
         type_tok = self.next()
         if type_tok.type not in ("ID", "NUMBER", "INT", "BOOL", "STRING", "C_CHANNEL"):
              raise ParserError(f"Expected type identifier but got {type_tok.type}")
         type_name = type_tok.value
         init = None
-        if self.peek().type == "=":
+        if self.peek().type == "OP" and self.peek().value == "=":
             self.next()
             init = self.parse_expression()
         return VarDecl(name, type_name, init)
@@ -78,10 +76,25 @@ class Parser:
                 raise ParserError(f"{msg} at {tok.line}:{tok.col}")
             return tok
 
+    def _consume_terminator(self):
+        if self.peek().type == "OP" and self.peek().value == ";":
+            self.next()
+        elif self.peek().type == "OP" and self.peek().value == "}":
+            pass
+        elif self.peek().type == "EOF":
+            pass
+        elif self.peek().type in ("VAR", "FUNC", "IF", "WHILE", "PRINT", "BREAK", "RETURN", "SEND", "RECEIVE"):
+            pass
+        elif self.peek().type == "ID":
+            pass 
+        else:
+            raise ParserError(f"Esperado ';' após instrução, '}}' ou fim de arquivo, mas encontrado '{self.peek().value}' na linha {self.peek().line}:{self.peek().col}.")
+
     def parse_func_decl(self) -> FuncDecl:
         self.expect("FUNC") 
         name = self.expect("ID").value
-        self.expect_symbol("(", "Erro na abertura de parâmetros") 
+        self.expect_symbol("(", "Erro na abertura de parâmetros")
+        valid_types = ("ID", "NUMBER", "INT", "BOOL", "STRING", "C_CHANNEL") 
         params = []
         if self.peek().type == "OP" and self.peek().value == ")":
             self.next() 
@@ -90,7 +103,6 @@ class Parser:
                 p_name = self.expect("ID").value
                 self.expect_symbol(":", "Erro no separador de tipo do parâmetro")
                 p_type_tok = self.next()
-                valid_types = ("ID", "NUMBER", "INT", "BOOL", "STRING", "C_CHANNEL")
                 if p_type_tok.type not in valid_types:
                      raise ParserError(f"Expected a valid type name (ID, NUMBER, INT, etc.) but got {p_type_tok.type} ('{p_type_tok.value}') at {p_type_tok.line}:{p_type_tok.col}")
                 p_type = p_type_tok.value
@@ -129,7 +141,47 @@ class Parser:
 
     def nud(self, tok: Token): 
         if tok.type == "NUMBER": 
-            return Literal(int(tok.value))
+            if '.' in tok.value:
+                return Literal(float(tok.value))
+            else:
+                return Literal(int(tok.value))
+        if tok.type == "OP" and tok.value == "{":
+            pairs = []
+            if not (self.peek().type == "OP" and self.peek().value == "}"):
+                while True:
+                    key = self.parse_expression() 
+                    self.expect_symbol(":", error_message="Esperado ':' em literal de dicionário")
+                    value = self.parse_expression() 
+                    pairs.append((key, value))
+                    if self.peek().type == "OP" and self.peek().value == ",":
+                        self.next() 
+                        if self.peek().type == "OP" and self.peek().value == "}":
+                            break 
+                        continue
+                    elif self.peek().type == "OP" and self.peek().value == "}":
+                        break
+                    else:
+                        raise ParserError(f"Token inesperado '{self.peek().value}' em literal de dicionário. Esperado ',' ou '}}'.")
+
+            self.expect_symbol("}", error_message="Esperado '}' para fechar literal de dicionário")
+            return DictLiteral(pairs=pairs)
+        if tok.type == "OP" and tok.value == "[":
+            elements = []
+            if not (self.peek().type == "OP" and self.peek().value == "]"):
+                while True:
+                    element = self.parse_expression()
+                    elements.append(element)
+                    if self.peek().type == "OP" and self.peek().value == ",":
+                        self.next()
+                        if self.peek().type == "OP" and self.peek().value == "]":
+                            break 
+                        continue
+                    elif self.peek().type == "OP" and self.peek().value == "]":
+                        break
+                    else:
+                        raise ParserError(f"Token inesperado '{self.peek().value}' em literal de lista. Esperado ',' ou ']'.")
+            self.expect_symbol("]", error_message="Esperado ']' para fechar literal de lista")
+            return ListLiteral(elements=elements)
         if tok.type == "STRING": 
             return Literal(tok.value[1:-1])
         if tok.type == "TRUE": 
@@ -180,6 +232,8 @@ class Parser:
                 return 50
             if v in ("*", "/"): 
                 return 60
+            if v in ("["):
+                return 85
         if tok.type == "(":
             return 80
         return 0
@@ -190,17 +244,21 @@ class Parser:
             if op in ("+", "-", "*", "/", "==", "!=", "<", ">", "<=", ">=", "&&", "||"):
                 right = self.parse_expression(self.lbp(tok))
                 return BinaryOp(left, op, right)
+            if op == "[":
+                index_expr = self.parse_expression() 
+                self.expect_symbol("]", error_message="Esperado ']' para fechar o acesso ao índice")
+                return IndexAccess(target=left, index=index_expr)
         if tok.type == "(":
             args = []
-            if self.peek().type != ")":
+            if self.peek().type != "OP" or self.peek().value != ")":
                 while True:
                     args.append(self.parse_expression())
-                    if self.peek().type == ",":
+                    if self.peek().type == "OP" and self.peek().value == ",":
                         self.next()
                         continue
                     else: 
                         break
-            self.expect(")") 
+            self.expect_symbol(")", "Esperado ')' para fechar argumentos da chamada de função")
             return Call(left, args)
         raise ParserError("Unexpected operator")
     
@@ -221,6 +279,7 @@ class Parser:
         if tok.type == "VAR":
             self.expect("VAR")
             decl = self.parse_var_decl_content()
+            self._consume_terminator()
             return VarDeclStmt(decl)
         if tok.type == "IF": 
             return self.parse_if() 
@@ -232,77 +291,16 @@ class Parser:
         if tok.type == "PAR": 
             self.next()
             return ParBlock(self.parse_block())
-        if tok.type == "SEND": 
-            return self.parse_send()
-        if tok.type == "RECEIVE": 
-            return self.parse_receive()
-        if tok.type == "PRINT": 
-            self.next()
-            self.expect_symbol("(", "Esperado '(' para iniciar a expressão do print")
-            expr = self.parse_expression()
-            self.expect_symbol(")", "Esperado ')' para fechar a expressão do print")
-            return PrintStmt(expr)
-        if tok.type == "BREAK": 
-            self.next()
-            return BreakStmt()
-        if tok.type == "RETURN": 
-            self.next()
-            expr = None
-            if self.peek().type not in ("}", "EOF"):
-                expr = self.parse_expression()
-            return ReturnStmt(expr)
-        if tok.type == "FUNC":
-            return self.parse_func_decl()
         if tok.type == "OP" and tok.value == "{":
             return self.parse_block()
-        if tok.type == "ID" and len(self.tokens) > self.pos + 1:
-            next_tok = self.tokens[self.pos + 1] 
-            if next_tok.type == "OP" and next_tok.value == ":":
-                decl = self.parse_var_decl_content()
-                return VarDeclStmt(decl)
-        expr = self.parse_expression()
-        if self.peek().type == "OP" and self.peek().value == "=":
-            self.next()
-            val = self.parse_expression()
-            return VarAssign(expr, val)
-        else:
-            return ExprStmt(expr)
-        
-    def parse_var_decl_content(self) -> VarDecl:
-        name = self.expect("ID").value  
-        colon_tok = self.expect("OP")
-        if colon_tok.value != ":":
-            raise ParserError(f"Expected ':' but got '{colon_tok.value}' at {colon_tok.line}:{colon_tok.col}")
-        type_tok = self.next()
-        valid_types = ("ID", "NUMBER", "INT", "BOOL", "STRING", "C_CHANNEL")
-        if type_tok.type not in valid_types:
-             raise ParserError(f"Expected a type identifier but got {type_tok.type} ('{type_tok.value}') at {type_tok.line}:{type_tok.col}")
-        type_name = type_tok.value
-        init = None
-        if self.peek().type == "OP" and self.peek().value == "=":
-            self.next()
-            init = self.parse_expression()
-        return VarDecl(name, type_name, init)
-
-    def parse_send(self) -> SendStmt:
-        self.expect("SEND"); self.expect("(")
-        ch = self.parse_expression()
-        self.expect(",")
-        data = self.parse_expression()
-        self.expect(")");
-        return SendStmt(ch, data)
-
-    def parse_receive(self) -> ReceiveStmt:
-        self.expect("RECEIVE"); self.expect("(")
-        ch = self.parse_expression()
-        self.expect(")")
-        return ReceiveStmt(ch, None)
-    
-    def parse_while(self) -> WhileStmt:
-        self.expect("WHILE")
-        self.expect_symbol("(", "Esperado '(' para iniciar a condição do while")
-        cond = self.parse_expression()
-        self.expect_symbol(")", "Esperado ')' para fechar a condição do while")
-        body = self.parse_stmt()
-
-        return WhileStmt(cond, body)
+        if tok.type == "SEND": 
+            stmt = self.parse_send()
+            self._consume_terminator()
+            return stmt
+        if tok.type == "RECEIVE": 
+            stmt = self.parse_receive()
+            self._consume_terminator()
+            return stmt
+        if tok.type == "PRINT": 
+            self.next() 
+            self.expect_symbol("(", 
