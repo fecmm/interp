@@ -6,7 +6,6 @@ from ast_251018_215806 import Program, AST, Block, VarRef, BinaryOp, IfStmt, Whi
 from semantic_3000 import SemanticAnalyzer, SemanticError, ASTVisitor
 from interpreter_3000 import Interpreter, RuntimeError, ReturnException, BreakException
 
-
 def print_section_header(title):
     print("\n")
     print(f" {title.center(46)} ")
@@ -55,8 +54,7 @@ def main():
         interpreter = Interpreter()
         interpreter.interpret(validated_ast)
         print("\nExecução finalizada com sucesso")
-
-#tratamento de possíveis erros:
+        
     except FileNotFoundError:
         print(f"Erro: O arquivo '{input_file}' não foi encontrado.")
         sys.exit(1)
@@ -81,6 +79,4 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-
     main()
-
