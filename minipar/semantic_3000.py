@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from minipar.ast_251018_215806 import AST, Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, VarDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt 
+from ast_251018_215806 import AST, Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, VarDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt, DictLiteral, ListLiteral, IndexAccess
 from symbol_3000 import SymbolEntry, SymbolTable, SemanticError
 
 class ASTVisitor:
@@ -28,7 +28,14 @@ class SemanticAnalyzer(ASTVisitor):
         ('number', '/', 'number'): 'number',
         ('number', '==', 'number'): 'bool', 
         ('number', '<', 'number'): 'bool',
-        ('bool', '==', 'bool'): 'bool', 
+
+        ('number', '>=', 'number'): 'bool', 
+        ('number', '>', 'number'): 'bool',
+        ('number', '<=', 'number'): 'bool',
+        ('number', '!=', 'number'): 'bool',
+
+        ('bool', '==', 'bool'): 'bool',
+        ('bool', '||', 'bool'): 'bool',
         ('bool', '&&', 'bool'): 'bool'}
     
     def __init__(self):
@@ -127,13 +134,46 @@ class SemanticAnalyzer(ASTVisitor):
             setattr(node, 'ast_type', 'bool')
         elif isinstance(node.value, int): 
             setattr(node, 'ast_type', 'number')
+        elif isinstance(node.value, float): 
+            setattr(node, 'ast_type', 'number')
         elif isinstance(node.value, str): 
             setattr(node, 'ast_type', 'string')
         else: 
             setattr(node, 'ast_type', 'unknown')
-        
+
+    def visit_DictLiteral(self, node: DictLiteral):
+        setattr(node, 'ast_type', 'dict')
+        for key, value in node.pairs:
+            self.visit(key)
+            self.visit(value)
+
+    def visit_ListLiteral(self, node: ListLiteral):
+        setattr(node, 'ast_type', 'list')
+        if node.elements:
+            first_type = self.visit(node.elements[0])
+            for element in node.elements:
+                self.visit(element)
+                element_type = getattr(element, 'ast_type', 'error')
+                if element_type != first_type: self.report_error("Lista deve ser homogênea...")
+
+    def visit_IndexAccess(self, node: IndexAccess):
+        self.visit(node.target)
+        target_type = getattr(node.target, 'ast_type', 'error')
+        self.visit(node.index)
+        index_type = getattr(node.index, 'ast_type', 'error')
+        if target_type == 'list':
+            if index_type != 'number':
+                self.report_error(f"Índice de lista deve ser 'number', recebido '{index_type}'.")
+            setattr(node, 'ast_type', 'unknown')
+
+        elif target_type == 'dict':
+            if index_type not in ('string', 'number'):
+                self.report_error(f"Chave de dicionário inválida: esperado 'string' ou 'number', recebido '{index_type}'.")
+            setattr(node, 'ast_type', 'unknown') 
+        else:
+            self.report_error(f"Acesso por índice/chave ('[]') não é suportado para o tipo '{target_type}'.")
+
     def visit_Call(self, node: Call):
         self.visit(node.callee)
         for arg in node.args: self.visit(arg)
-
         setattr(node, 'ast_type', 'number')
