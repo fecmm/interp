@@ -1,10 +1,10 @@
 import sys
 from typing import List, Optional, Dict, Any
-from lexer_251018_215612 import Lexer, Token, LexerError
-from parser_251018_215706 import Parser, ParserError
-from ast_251018_215806 import Program, AST, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, VarDecl, Literal, Call, VarAssign, VarDeclStmt, PrintStmt, Stmt
-from semantic_3000 import SemanticAnalyzer, SemanticError, ASTVisitor
-from interpreter_3000 import Interpreter, RuntimeError, ReturnException, BreakException
+from minipar.lexer_251018_215612 import Lexer, Token, LexerError
+from minipar.parser_251018_215706 import Parser, ParserError
+from minipar.ast_251018_215806 import Program, AST, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, VarDecl, Literal, Call, VarAssign, VarDeclStmt, PrintStmt, Stmt
+from minipar.semantic_3000 import SemanticAnalyzer, SemanticError, ASTVisitor
+from from minipar.interpreter_3000 import Interpreter, RuntimeError, ReturnException, BreakException
 
 def print_section_header(title):
     print("\n")
@@ -80,3 +80,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
