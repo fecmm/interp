@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from ast_251018_215806 import AST, Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, VarDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt 
+from minipar.ast_251018_215806 import AST, Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, VarDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt 
 from symbol_3000 import SymbolEntry, SymbolTable, SemanticError
 
 class ASTVisitor:
@@ -135,4 +135,5 @@ class SemanticAnalyzer(ASTVisitor):
     def visit_Call(self, node: Call):
         self.visit(node.callee)
         for arg in node.args: self.visit(arg)
+
         setattr(node, 'ast_type', 'number')
