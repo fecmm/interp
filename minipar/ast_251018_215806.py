@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Tuple, Optional, Any
 
 class AST: pass
 
@@ -47,6 +47,12 @@ class WhileStmt(Stmt):
     body: Stmt
 
 @dataclass
+class ForStmt(Stmt):
+    decl: VarDecl 
+    iterable: Any  
+    body: Any
+
+@dataclass
 class ExprStmt(Stmt):
     expr: 'Expr'
 
@@ -79,7 +85,8 @@ class ReceiveStmt(Stmt):
 
 @dataclass
 class PrintStmt(Stmt):
-    expr: 'Expr'
+    # expr: 'Expr'
+    expressions: List['Expr']
 
 @dataclass
 class ReturnStmt(Stmt): 
@@ -95,6 +102,24 @@ class Expr(AST): pass
 @dataclass
 class Literal (Expr):
     value: object
+
+@dataclass
+class DictLiteral(Expr):
+    pairs: List[Tuple['Expr', 'Expr']] 
+
+@dataclass
+class ListLiteral(Expr):
+    elements: List['Expr']
+    
+@dataclass
+class IndexAccess(Expr):
+    target: 'Expr'   
+    index: 'Expr' 
+
+@dataclass
+class PropertyAccess(Expr):
+    target: Any          
+    property_name: str   
 
 @dataclass
 class VarRef(Expr):
