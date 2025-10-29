@@ -1,7 +1,7 @@
 # interpreter.py
 
 from typing import List, Optional, Dict, Any
-from ast_251018_215806 import Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt, PrintStmt, AST
+from minipar.ast_251018_215806 import Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt, PrintStmt, AST
 
 class RuntimeError(Exception): pass
 
@@ -185,4 +185,5 @@ class Interpreter(ASTVisitor):
             result = e.value
         finally:
             self.env = self.env.exit_scope()
+
         return result
