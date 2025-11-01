@@ -29,6 +29,17 @@ class FuncDecl(AST):
     ret_type: str
     body: 'Block'
 
+@dataclass
+class FieldAccess(AST):
+    target: AST
+    member_name: str
+
+@dataclass
+class MethodCall(AST):
+    target: AST 
+    method_name: str
+    args: List[AST]
+
 # Statements
 class Stmt(AST): pass
 
@@ -108,6 +119,12 @@ class SeqStmt(Stmt):
 class SendStmt(Stmt):
     channel: Any
     data: Any
+
+@dataclass
+class CChannelClientStmt(Stmt): 
+    name: str
+    address: AST 
+    port: AST
 
 # Expressoes
 class Expr(AST): pass
