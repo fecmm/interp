@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from typing import List, Tuple, Optional, Any
 
-class AST: pass
+class AST: 
+    pass
 
 @dataclass
 class Program(AST):
@@ -85,7 +86,6 @@ class ReceiveStmt(Stmt):
 
 @dataclass
 class PrintStmt(Stmt):
-    # expr: 'Expr'
     expressions: List['Expr']
 
 @dataclass
@@ -95,6 +95,19 @@ class ReturnStmt(Stmt):
 @dataclass
 class BreakStmt(Stmt): 
     pass
+
+@dataclass
+class ParStmt(Stmt):
+    stmts: List[Any]
+
+@dataclass
+class SeqStmt(Stmt):
+    stmts: List[Any]
+
+@dataclass
+class SendStmt(Stmt):
+    channel: Any
+    data: Any
 
 # Expressoes
 class Expr(AST): pass
@@ -149,3 +162,12 @@ class NewObj(Expr):
 class AttrAccess(Expr):
     obj: Expr
     attr: str
+
+@dataclass
+class ReceiveExpr(Expr):
+    channel: Any
+
+@dataclass
+class NewExpr(Expr):
+    target_type: str
+    args: List[Any]
