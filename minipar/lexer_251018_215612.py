@@ -13,20 +13,20 @@ class LexerError(Exception): pass
 
 class Lexer:
     TOKEN_SPEC = [
-        ("NUMBER", r"\d+(\.\d+)?"),
+        ("NUMBER", r"\d+(\.\d+)?"), #modificação aqui 
         ("STRING", r"\"(\\.|[^\"])*\""),
         ("ID", r"[A-Za-z_][A-Za-z0-9_]*"),
         ("MULTICOMMENT", r"/\*[\s\S]*?\*/"), #multicomentarios
         ("NEWLINE", r"\n"),
         ("SKIP", r"[ \t\r]+"), #espaço como caractere a se ignorar
-        ("COMMENT", r"#.*"), #comentario singular
+        ("COMMENT", r"#.*"),
         ("OP",
-         r"==|!=|<=|>=|->|&&|\|\||[+\-*/<>=!,.;:(){}\[\]]"),
+         r"==|!=|<=|>=|->|&&|\|\||[+\-*/<>=!,.;:(){}\[\].]"),
     ]
     KEYWORDS = {
         "class","extends","new","if","else","while","for","func","return",
-        "var","SEQ","PAR","send","receive","print","true","false","int","bool","string","c_channel",
-        "break", "number"}
+        "var","seq","par","send","receive","print","true","false","int","bool","string","c_channel",
+        "break", "number", "in"}
 
     def __init__(self, text: str):
         self.text = text
