@@ -1,12 +1,18 @@
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, List
 
-class SemanticError(Exception): pass
+class SemanticError(Exception): 
+    pass
 
 class SymbolEntry:
     def __init__(self, name: str, type_name: str, kind: str):
         self.name = name
         self.type_name = type_name
         self.kind = kind
+
+class FunctionSymbolEntry(SymbolEntry):
+    def __init__(self, name: str, param_types: List[str], return_type: str, kind: str = "function"):
+        super().__init__(name, return_type, kind)
+        self.param_types = param_types
 
 class SymbolTable:
     def __init__(self, parent: Optional['SymbolTable'] = None):
