@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict, Any
-from minipar.ast_251018_215806 import AST, Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, VarDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt, DictLiteral, ListLiteral, IndexAccess, NewExpr, ParStmt, SendStmt, SeqStmt, ReceiveExpr
-from minipar.symbol_3000 import SymbolEntry, SymbolTable, SemanticError, FunctionSymbolEntry
+from ast_251018_215806 import AST, Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, VarDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt, DictLiteral, ListLiteral, IndexAccess, NewExpr, ParStmt, SendStmt, SeqStmt, ReceiveExpr, MethodCall
+from symbol_3000 import SymbolEntry, SymbolTable, SemanticError, FunctionSymbolEntry
 
 class ASTVisitor:
     def visit(self, node: AST, *args, **kwargs):
@@ -36,7 +36,10 @@ class SemanticAnalyzer(ASTVisitor):
 
         ('bool', '==', 'bool'): 'bool',
         ('bool', '||', 'bool'): 'bool',
-        ('bool', '&&', 'bool'): 'bool'}
+        ('bool', '&&', 'bool'): 'bool',
+        ('string', '==', 'string'): 'bool',
+        ('string', '!=', 'string'): 'bool',
+        ('number', '==', 'number'): 'bool'}
     
     BUILTIN_FUNCTIONS = {
         "print": (['any'], 'void'), 
@@ -46,11 +49,14 @@ class SemanticAnalyzer(ASTVisitor):
         "pow": (['number', 'number'], 'number'),
         "random": ([], 'number'),
         "range": (['number'], 'list'),
-        "sleep": (['number'], 'void') 
+        "sleep": (['number'], 'void'),
+        "input": (['string'], 'string'),
+        "close": ([], 'void')
     }
     
     def __init__(self):
         super().__init__()
+        self.global_scope = SymbolTable()
         self.current_scope: SymbolTable = SymbolTable()
         self.current_return_type: Optional[str] = None
         self.errors: List[str] = []
@@ -79,7 +85,8 @@ class SemanticAnalyzer(ASTVisitor):
         self.current_scope = self.current_scope.exit_scope()
     
     def visit_FuncDecl(self, node: FuncDecl):
-        self.current_scope.define(SymbolEntry(node.name, node.ret_type, 'FUNC'))
+        func_entry = FunctionSymbolEntry(name=node.name, param_types=[p.type_name for p in node.params], return_type=node.ret_type, kind='function')
+        self.current_scope.define(func_entry) 
         self.current_scope = self.current_scope.enter_scope()
         self.current_return_type = node.ret_type
         for param in node.params:
@@ -160,10 +167,24 @@ class SemanticAnalyzer(ASTVisitor):
             setattr(node, 'ast_type', 'unknown')
 
     def visit_DictLiteral(self, node: DictLiteral):
+        key_types_seen = set()
+        value_types_seen = set()
+        for key_node, value_node in node.pairs:
+            self.visit(key_node)
+            key_type = getattr(key_node, 'ast_type', 'error')
+            self.visit(value_node)
+            value_type = getattr(value_node, 'ast_type', 'error')
+            if key_type not in ('string', 'number', 'bool'):
+                self.report_error(f"Erro Semântico: Tipo de chave '{key_type}' não permitido para dicionários (deve ser string, number ou bool).")
+            if key_type != 'error':
+                key_types_seen.add(key_type)
+            if value_type != 'error':
+                value_types_seen.add(value_type)
+        if len(key_types_seen) > 1:
+            self.report_error("Erro Semântico: Todas as chaves do dicionário devem ser do mesmo tipo.")
+        if len(value_types_seen) > 1:
+            self.report_error("Erro Semântico: Todos os valores do dicionário devem ser do mesmo tipo.")
         setattr(node, 'ast_type', 'dict')
-        for key, value in node.pairs:
-            self.visit(key)
-            self.visit(value)
 
     def visit_ListLiteral(self, node: ListLiteral):
         setattr(node, 'ast_type', 'list')
@@ -172,7 +193,8 @@ class SemanticAnalyzer(ASTVisitor):
             for element in node.elements:
                 self.visit(element)
                 element_type = getattr(element, 'ast_type', 'error')
-                if element_type != first_type: self.report_error("Lista deve ser homogênea...")
+                if element_type != first_type: 
+                    self.report_error("Lista deve ser homogênea...")
 
     def visit_IndexAccess(self, node: IndexAccess):
         self.visit(node.target)
@@ -191,9 +213,34 @@ class SemanticAnalyzer(ASTVisitor):
             self.report_error(f"Acesso por índice/chave ('[]') não é suportado para o tipo '{target_type}'.")
 
     def visit_Call(self, node: Call):
-        self.visit(node.callee)
-        for arg in node.args: self.visit(arg)
-        setattr(node, 'ast_type', 'number')
+        self.visit(node.callee) 
+        if isinstance(node.callee, VarRef):
+            func_name = node.callee.name
+        elif hasattr(node.callee, 'name'):
+            func_name = node.callee.name
+        else:
+            self.report_error(f"O alvo da chamada (callee) '{node.callee}' é inválido.")
+            setattr(node, 'ast_type', 'error')
+            return 'error'
+        func_entry = self.current_scope.resolve(func_name)
+        if not func_entry or func_entry.kind not in ("function", "builtin_func"):
+            self.report_error(f"Função '{func_name}' não declarada ou não é uma função.")
+            setattr(node, 'ast_type', 'error')
+            return 'error'
+        expected_types = func_entry.param_types
+        actual_types = []
+        for arg in node.args:
+            self.visit(arg)
+            actual_types.append(getattr(arg, 'ast_type', 'error'))
+        if len(expected_types) != len(actual_types):
+            self.report_error(f"Chamada para '{func_name}' tem {len(actual_types)} argumentos, mas esperava {len(expected_types)}.")
+        else:
+            for exp_t, act_t in zip(expected_types, actual_types):
+                if exp_t != 'any' and exp_t != act_t:
+                    self.report_error(f"Incompatibilidade no argumento da chamada para '{func_name}': esperado {exp_t}, recebido {act_t}.")
+        return_type = func_entry.return_type
+        setattr(node, 'ast_type', return_type)
+        return return_type
 
     def visit_NewExpr(self, node: NewExpr):
         if node.target_type == 'c_channel':
@@ -212,8 +259,14 @@ class SemanticAnalyzer(ASTVisitor):
         self.visit(node.channel)
         self.visit(node.data)
         ch_type = getattr(node.channel, 'ast_type', 'error')
+        data_type = getattr(node.data, 'ast_type', 'error') 
         if ch_type != 'c_channel':
             self.report_error(f"O alvo do SEND deve ser do tipo 'c_channel', mas recebeu '{ch_type}'.")
+            setattr(node, 'ast_type', 'error')
+            return 
+        if data_type != 'string':
+            self.report_error(f"O tipo de dado enviado ({data_type}) não é o tipo esperado 'string'.")
+        setattr(node, 'ast_type', 'string')
             
     def visit_ReceiveExpr(self, node: ReceiveExpr):
         self.visit(node.channel)
@@ -223,4 +276,41 @@ class SemanticAnalyzer(ASTVisitor):
             setattr(node, 'ast_type', 'error')
         else:
             setattr(node, 'ast_type', 'number')
+    
+    def visit_CChannelClientStmt(self, node):
+        self.current_scope.define(SymbolEntry(node.name, 'c_channel', 'VAR'))
+        self.visit(node.address)
+        self.visit(node.port)
+        setattr(node, 'ast_type', 'c_channel')
 
+    def visit_SChannelServerStmt(self, node):
+        self.current_scope.define(SymbolEntry(node.name, 's_channel', 'VAR'))
+        self.visit(node.init) 
+        setattr(node, 'ast_type', 's_channel')
+
+    def visit_MethodCall(self, node: MethodCall):
+        self.visit(node.target)
+        target_type = getattr(node.target, 'ast_type', 'error')
+        if target_type == 'c_channel':
+            if node.method_name == 'send':
+                if len(node.args) != 1:
+                    self.report_error(f"O método 'send' em c_channel esperava 1 argumento, mas recebeu {len(node.args)}.")
+                self.visit(node.args[0])
+                data_type = getattr(node.args[0], 'ast_type', 'error')
+                if data_type != 'string':
+                    self.report_error(f"Argumento do 'send' em c_channel deve ser 'string', mas recebeu '{data_type}'.")
+                setattr(node, 'ast_type', 'string')
+                return 'string'
+            elif node.method_name == 'close':
+                if len(node.args) != 0:
+                     self.report_error(f"O método 'close' em c_channel não esperava argumentos, mas recebeu {len(node.args)}.")
+                setattr(node, 'ast_type', 'void')
+                return 'void'
+            else:
+                self.report_error(f"Método '{node.method_name}' não suportado pelo tipo '{target_type}'.")
+                setattr(node, 'ast_type', 'error')
+                return 'error'
+        else:
+            self.report_error(f"Chamada de método em alvo de tipo não suportado: '{target_type}'.")
+            setattr(node, 'ast_type', 'error')
+            return 'error'
