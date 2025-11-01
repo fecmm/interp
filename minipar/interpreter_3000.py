@@ -1,15 +1,20 @@
-# interpreter.py
-
 from typing import List, Optional, Dict, Any
-from minipar.ast_251018_215806 import Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt, PrintStmt, AST
+from ast_251018_215806 import Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt, PrintStmt, AST, NewExpr, SendStmt, ReceiveExpr, ParStmt, SeqStmt
+import math
+import random as py_random
+import queue
+import threading
+import time
 
-class RuntimeError(Exception): pass
+class RuntimeError(Exception): 
+    pass
 
 class ReturnException(Exception): 
     def __init__(self, value):
         self.value = value
 
-class BreakException(Exception): pass 
+class BreakException(Exception): 
+    pass 
 
 class ASTVisitor:
     def visit(self, node: AST, *args, **kwargs):
@@ -69,7 +74,16 @@ class Interpreter(ASTVisitor):
         super().__init__()
         self.global_env = Environment()
         self.env: Environment = self.global_env
-        self.functions: Dict[str, FuncDecl] = {} 
+        self.functions: Dict[str, FuncDecl] = {}
+        self.runtime_builtins = {
+            "exp": math.exp,
+            "pow": pow,
+            "random": py_random.random,
+            "range": range,
+            "len": len,
+            "sum": sum,
+            "sleep": time.sleep
+        }
 
     def interpret(self, ast: Program):
         for stmt in ast.stmts:
@@ -104,8 +118,11 @@ class Interpreter(ASTVisitor):
         self.env.assign(name, value) 
 
     def visit_PrintStmt(self, node: PrintStmt):
-        value = self.visit(node.expr)
-        print(f"{value}")
+        output_parts = []
+        for expr_node in node.expressions:
+            value = self.visit(expr_node)
+            output_parts.append(str(value))
+        print(f"{' '.join(output_parts)}")
 
     def visit_FuncDecl(self, node: FuncDecl):
         self.functions[node.name] = node
@@ -163,6 +180,12 @@ class Interpreter(ASTVisitor):
             return left < right
         if op == '>':
             return left > right
+        if op == '<=':
+            return left <= right
+        if op == '>=':
+            return left >= right
+        if op == '!=':
+            return left != right
         if op == '&&':
             return left and right
         if op == '||':
@@ -171,6 +194,10 @@ class Interpreter(ASTVisitor):
 
     def visit_Call(self, node: Call):
         func_name = node.callee.name 
+        if func_name in self.runtime_builtins:
+            func = self.runtime_builtins[func_name]
+            args_values = [self.visit(arg) for arg in node.args]
+            return func(*args_values)
         func_decl = self.functions.get(func_name)
         if not func_decl:
             raise RuntimeError(f"Função '{func_name}' não definida.")
@@ -185,5 +212,54 @@ class Interpreter(ASTVisitor):
             result = e.value
         finally:
             self.env = self.env.exit_scope()
-
         return result
+    
+    def visit_NewExpr(self, node: NewExpr):
+        if node.target_type == 'c_channel':
+            return Channel()
+        raise RuntimeError(f"Criação 'new' de tipo '{node.target_type}' não suportada no runtime.")
+    
+    def visit_SendStmt(self, node: SendStmt):
+        channel_obj = self.visit(node.channel)
+        data_value = self.visit(node.data)
+        if not isinstance(channel_obj, Channel):
+            raise RuntimeError("O alvo do SEND não é um canal válido.")
+        channel_obj.send(data_value)
+
+    def visit_ReceiveExpr(self, node: ReceiveExpr):
+        channel_obj = self.visit(node.channel)
+        if not isinstance(channel_obj, Channel):
+            raise RuntimeError("O alvo do RECEIVE não é um canal válido.")
+        return channel_obj.receive()
+    
+    def visit_ParStmt(self, node: ParStmt):
+        threads = []
+        def thread_target(stmt, env_snapshot):
+            local_interpreter = Interpreter()
+            local_interpreter.global_env = self.global_env
+            local_interpreter.functions = self.functions
+            local_interpreter.env = env_snapshot
+            try:
+                local_interpreter.visit(stmt)
+            except Exception as e:
+                print(f"Erro de Runtime em Thread Paralela: {e}")
+        for stmt in node.stmts:
+            thread = threading.Thread(target=thread_target, args=(stmt, self.env))
+            threads.append(thread)
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+    def visit_SeqStmt(self, node: SeqStmt):
+        for stmt in node.stmts:
+            self.visit(stmt)
+    
+class Channel:
+    def __init__(self):
+        self.queue = queue.Queue(maxsize=1) 
+        
+    def send(self, value):
+        self.queue.put(value) 
+        
+    def receive(self):
+        return self.queue.get()
