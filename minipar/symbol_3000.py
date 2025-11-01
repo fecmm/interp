@@ -11,8 +11,9 @@ class SymbolEntry:
 
 class FunctionSymbolEntry(SymbolEntry):
     def __init__(self, name: str, param_types: List[str], return_type: str, kind: str = "function"):
-        super().__init__(name, return_type, kind)
+        super().__init__(name, return_type, kind) 
         self.param_types = param_types
+        self.return_type = return_type
 
 class SymbolTable:
     def __init__(self, parent: Optional['SymbolTable'] = None):
