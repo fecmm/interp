@@ -23,11 +23,12 @@ class Lexer:
         ("OP",
          r"==|!=|<=|>=|->|&&|\|\||[+\-*/<>=!,.;:(){}\[\].]"),
     ]
+    
     KEYWORDS = {
         "class","extends","new","if","else","while","for","func","return",
-        "var","seq","par","send","receive","print","true","false","int","bool","string","c_channel",
+        "var","seq","par","print","true","false","int","bool","string","c_channel",
         "break", "number", "in"}
-
+    
     def __init__(self, text: str):
         self.text = text
         parts = []
