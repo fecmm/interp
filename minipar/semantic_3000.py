@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict, Any
-from minipar.ast_251018_215806 import AST, Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, VarDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt, DictLiteral, ListLiteral, IndexAccess
-from minipar.symbol_3000 import SymbolEntry, SymbolTable, SemanticError
+from ast_251018_215806 import AST, Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, VarDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt, DictLiteral, ListLiteral, IndexAccess, NewExpr, ParStmt, SendStmt, SeqStmt, ReceiveExpr
+from symbol_3000 import SymbolEntry, SymbolTable, SemanticError, FunctionSymbolEntry
 
 class ASTVisitor:
     def visit(self, node: AST, *args, **kwargs):
@@ -38,11 +38,28 @@ class SemanticAnalyzer(ASTVisitor):
         ('bool', '||', 'bool'): 'bool',
         ('bool', '&&', 'bool'): 'bool'}
     
+    BUILTIN_FUNCTIONS = {
+        "print": (['any'], 'void'), 
+        "len": (['list'], 'number'), 
+        "sum": (['list'], 'number'),
+        "exp": (['number'], 'number'),
+        "pow": (['number', 'number'], 'number'),
+        "random": ([], 'number'),
+        "range": (['number'], 'list'),
+        "sleep": (['number'], 'void') 
+    }
+    
     def __init__(self):
         super().__init__()
         self.current_scope: SymbolTable = SymbolTable()
         self.current_return_type: Optional[str] = None
         self.errors: List[str] = []
+        self._initialize_builtins()
+
+    def _initialize_builtins(self):
+        for name, (param_types, return_type) in self.BUILTIN_FUNCTIONS.items():
+            entry = FunctionSymbolEntry(name, param_types, return_type, kind="builtin_func")
+            self.current_scope.define(entry)
 
     def report_error(self, msg: str): 
         self.errors.append(msg)
@@ -53,7 +70,8 @@ class SemanticAnalyzer(ASTVisitor):
             raise SemanticError(f"Análise semântica falhou com {len(self.errors)} erros:\n" + "\n".join(self.errors))
         return program
 
-    def visit_Program(self, node: Program): self.generic_visit(node)
+    def visit_Program(self, node: Program): 
+        self.generic_visit(node)
     
     def visit_Block(self, node: Block):
         self.current_scope = self.current_scope.enter_scope()
@@ -165,7 +183,6 @@ class SemanticAnalyzer(ASTVisitor):
             if index_type != 'number':
                 self.report_error(f"Índice de lista deve ser 'number', recebido '{index_type}'.")
             setattr(node, 'ast_type', 'unknown')
-
         elif target_type == 'dict':
             if index_type not in ('string', 'number'):
                 self.report_error(f"Chave de dicionário inválida: esperado 'string' ou 'number', recebido '{index_type}'.")
@@ -178,3 +195,31 @@ class SemanticAnalyzer(ASTVisitor):
         for arg in node.args: self.visit(arg)
         setattr(node, 'ast_type', 'number')
 
+    def visit_NewExpr(self, node: NewExpr):
+        if node.target_type == 'c_channel':
+            setattr(node, 'ast_type', 'c_channel')
+        else:
+            self.report_error(f"Criação 'new' de tipo '{node.target_type}' não suportada ou desconhecida.")
+            setattr(node, 'ast_type', 'error')
+            
+    def visit_ParStmt(self, node: ParStmt):
+        self.generic_visit(node)
+
+    def visit_SeqStmt(self, node: SeqStmt):
+        self.generic_visit(node) 
+
+    def visit_SendStmt(self, node: SendStmt):
+        self.visit(node.channel)
+        self.visit(node.data)
+        ch_type = getattr(node.channel, 'ast_type', 'error')
+        if ch_type != 'c_channel':
+            self.report_error(f"O alvo do SEND deve ser do tipo 'c_channel', mas recebeu '{ch_type}'.")
+            
+    def visit_ReceiveExpr(self, node: ReceiveExpr):
+        self.visit(node.channel)
+        ch_type = getattr(node.channel, 'ast_type', 'error')
+        if ch_type != 'c_channel':
+            self.report_error(f"O alvo do RECEIVE deve ser do tipo 'c_channel', mas recebeu '{ch_type}'.")
+            setattr(node, 'ast_type', 'error')
+        else:
+            setattr(node, 'ast_type', 'number')
