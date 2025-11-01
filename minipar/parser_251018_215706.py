@@ -1,6 +1,6 @@
 from typing import List
-from lexer_251018_215612 import Token, Lexer
-from ast_251018_215806 import *
+from minipar.lexer_251018_215612 import Token, Lexer
+from minipar.ast_251018_215806 import *
 
 class ParserError(Exception): pass
 class Parser:
@@ -427,3 +427,4 @@ class Parser:
         self.expect_symbol(")", "Esperado ')' para fechar argumentos do print")
         return PrintStmt(expressions=expressions)
     
+
