@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict, Any
-from ast_251018_215806 import AST, Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, VarDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt, DictLiteral, ListLiteral, IndexAccess, NewExpr, ParStmt, SendStmt, SeqStmt, ReceiveExpr, MethodCall
-from symbol_3000 import SymbolEntry, SymbolTable, SemanticError, FunctionSymbolEntry
+from minipar.ast_251018_215806 import AST, Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, VarDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt, DictLiteral, ListLiteral, IndexAccess, NewExpr, ParStmt, SendStmt, SeqStmt, ReceiveExpr, MethodCall
+from minipar.symbol_3000 import SymbolEntry, SymbolTable, SemanticError, FunctionSymbolEntry
 
 class ASTVisitor:
     def visit(self, node: AST, *args, **kwargs):
@@ -314,3 +314,4 @@ class SemanticAnalyzer(ASTVisitor):
             self.report_error(f"Chamada de método em alvo de tipo não suportado: '{target_type}'.")
             setattr(node, 'ast_type', 'error')
             return 'error'
+
