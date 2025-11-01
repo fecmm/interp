@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict, Any
-from minipar.ast_251018_215806 import AST, Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, VarDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt, DictLiteral, ListLiteral, IndexAccess, NewExpr, ParStmt, SendStmt, SeqStmt, ReceiveExpr
-from minipar.symbol_3000 import SymbolEntry, SymbolTable, SemanticError, FunctionSymbolEntry
+from ast_251018_215806 import AST, Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, VarDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt, DictLiteral, ListLiteral, IndexAccess, NewExpr, ParStmt, SendStmt, SeqStmt, ReceiveExpr
+from symbol_3000 import SymbolEntry, SymbolTable, SemanticError, FunctionSymbolEntry
 
 class ASTVisitor:
     def visit(self, node: AST, *args, **kwargs):
@@ -223,4 +223,3 @@ class SemanticAnalyzer(ASTVisitor):
             setattr(node, 'ast_type', 'error')
         else:
             setattr(node, 'ast_type', 'number')
-
