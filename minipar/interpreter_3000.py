@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from ast_251018_215806 import Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt, PrintStmt, AST, NewExpr, SendStmt, ReceiveExpr, ParStmt, SeqStmt
+from minipar.ast_251018_215806 import Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt, PrintStmt, AST, NewExpr, SendStmt, ReceiveExpr, ParStmt, SeqStmt
 import math
 import random as py_random
 import queue
@@ -263,3 +263,4 @@ class Channel:
         
     def receive(self):
         return self.queue.get()
+
