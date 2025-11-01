@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from minipar.ast_251018_215806 import Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt, PrintStmt, AST, NewExpr, SendStmt, ReceiveExpr, ParStmt, SeqStmt
+from ast_251018_215806 import Program, Block, VarRef, BinaryOp, IfStmt, WhileStmt, FuncDecl, Literal, VarAssign, VarDeclStmt, Call, ReturnStmt, PrintStmt, AST, NewExpr, SendStmt, ReceiveExpr, ParStmt, SeqStmt, DictLiteral
 import math
 import random as py_random
 import queue
@@ -82,7 +82,8 @@ class Interpreter(ASTVisitor):
             "range": range,
             "len": len,
             "sum": sum,
-            "sleep": time.sleep
+            "sleep": time.sleep,
+            "input": input
         }
 
     def interpret(self, ast: Program):
@@ -253,6 +254,25 @@ class Interpreter(ASTVisitor):
     def visit_SeqStmt(self, node: SeqStmt):
         for stmt in node.stmts:
             self.visit(stmt)
+
+    def visit_DictLiteral(self, node: DictLiteral) -> Dict[Any, Any]:
+        result_dict = {}
+        for key_node, value_node in node.pairs:
+            key_value = self.visit(key_node) 
+            value_value = self.visit(value_node)
+            result_dict[key_value] = value_value
+        return result_dict
+
+    def visit_CChannelClientStmt(self, node):
+        address = self.visit(node.address)
+        port = self.visit(node.port)
+        channel_obj = Channel() 
+        self.env.define(node.name, channel_obj)
+
+    def visit_SChannelServerStmt(self, node):
+        server_config = self.visit(node.init) 
+        server_obj = Channel()
+        self.env.define(node.name, server_obj)
     
 class Channel:
     def __init__(self):
@@ -263,4 +283,3 @@ class Channel:
         
     def receive(self):
         return self.queue.get()
-
