@@ -232,6 +232,8 @@ class Parser:
                 return 60
             if v in ("["):
                 return 85
+            if v == ".":
+                return 90
         if tok.type == "(":
             return 80
         return 0
@@ -246,6 +248,24 @@ class Parser:
                 index_expr = self.parse_expression() 
                 self.expect_symbol("]", error_message="Esperado ']' para fechar o acesso ao índice")
                 return IndexAccess(target=left, index=index_expr)
+            if op == ".":
+                member_tok = self.expect("ID")
+                member_name = member_tok.value
+                if self.peek().type == "OP" and self.peek().value == "(":
+                    self.next()
+                    args = []
+                    if self.peek().type != "OP" or self.peek().value != ")": 
+                        while True:
+                            args.append(self.parse_expression())
+                            if self.peek().type == "OP" and self.peek().value == ",":
+                                self.next()
+                                continue
+                            else: 
+                                break
+                    self.expect_symbol(")", "Esperado ')' para fechar argumentos da chamada de método")
+                    return MethodCall(left, member_name, args)
+                else:
+                    return FieldAccess(left, member_name)
         if tok.type == "(":
             args = []
             if self.peek().type != "OP" or self.peek().value != ")":
@@ -282,6 +302,8 @@ class Parser:
             return self.parse_func_decl()
         if tok.type == "OP" and tok.value == "{":
             return self.parse_block()
+        elif tok.type == "C_CHANNEL": 
+            return self.parse_c_channel_client_stmt()
         if tok.type == "PAR":
             return self.parse_par()
         if tok.type == "SEQ":
@@ -326,7 +348,6 @@ class Parser:
             if self.peek().type != "OP" or self.peek().value not in ("}", ";"):
                 expr = self.parse_expression()
             stmt = ReturnStmt(expr)
-            
         else:
             raise ParserError(f"Instrução inesperada: '{tok.value}' na linha {tok.line}:{tok.col}")
         return stmt
@@ -344,20 +365,6 @@ class Parser:
             self.next()
             init = self.parse_expression()
         return VarDecl(name, type_name, init)
-
-    def parse_send(self) -> SendStmt:
-        self.expect("SEND"); self.expect_symbol("(", "Esperado '(' em SEND")
-        ch = self.parse_expression()
-        self.expect_symbol(",", "Esperado ',' para separar canal e dado em SEND")
-        data = self.parse_expression()
-        self.expect_symbol(")", "Esperado ')' em SEND")
-        return SendStmt(ch, data)
-
-    def parse_receive(self) -> ReceiveStmt:
-        self.expect("RECEIVE"); self.expect_symbol("(", "Esperado '(' em RECEIVE")
-        ch = self.parse_expression()
-        self.expect_symbol(")", "Esperado ')' em RECEIVE")
-        return ReceiveStmt(ch, None)
     
     def parse_while(self) -> WhileStmt:
         self.expect("WHILE")
@@ -395,14 +402,18 @@ class Parser:
         return NewExpr(target_type=type_tok.value, args=args)
         
     def parse_receive_expr(self) -> ReceiveExpr:
-        self.expect("RECEIVE")
+        tok = self.expect("ID")
+        if tok.value != "receive":
+             raise ParserError(f"Esperado 'receive' mas encontrado '{tok.value}'")
         self.expect_symbol("(", "Esperado '(' em RECEIVE")
         ch = self.parse_expression()
         self.expect_symbol(")", "Esperado ')' em RECEIVE")
         return ReceiveExpr(channel=ch)
 
     def parse_send_stmt(self) -> SendStmt:
-        self.expect("SEND")
+        tok = self.expect("ID")
+        if tok.value != "send":
+            raise ParserError(f"Esperado 'send' mas encontrado '{tok.value}'")
         self.expect_symbol("(", "Esperado '(' em SEND")
         ch = self.parse_expression()
         self.expect_symbol(",", "Esperado ',' para separar canal e dado em SEND")
@@ -427,4 +438,12 @@ class Parser:
         self.expect_symbol(")", "Esperado ')' para fechar argumentos do print")
         return PrintStmt(expressions=expressions)
     
-
+    def parse_c_channel_client_stmt(self) -> CChannelClientStmt:
+        self.expect("C_CHANNEL")
+        name = self.expect("ID").value
+        self.expect_symbol("{", "Esperado '{' para iniciar a definição do canal cliente")
+        address_expr = self.parse_expression()
+        self.expect_symbol(",", "Esperado ',' para separar endereço e porta")
+        port_expr = self.parse_expression()
+        self.expect_symbol("}", "Esperado '}' para fechar a definição do canal cliente")
+        return CChannelClientStmt(name=name, address=address_expr, port=port_expr)
