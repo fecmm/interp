@@ -2,18 +2,149 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>MiniPar Editor</title>
+<title>Minipar 2025.1 Editor</title>
 <link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.14/lib/codemirror.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.14/theme/dracula.css">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.14/lib/codemirror.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.14/mode/python/python.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.14/addon/edit/closebrackets.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.14/addon/edit/matchbrackets.js"></script>
 </head>
 <body>
-<h1>MiniPar 2025.1 Editor</h1>
-<form method="post" action="/run">
-    <textarea name="code" id="code" rows="20" cols="80">{{ code | default("") }}</textarea><br>
-    <button type="submit">Executar</button>
-</form>
+<h1>Minipar 2025.1 Editor</h1>
 
-<h2>SAÍDA</h2>
-<pre id="result">{{ result | default("") }}</pre>
+<div id="test-examples-container" style="display:none;">
+<textarea id="example-1">a: number = 10
+b: bool = true
+func soma(num1: number, num2: number) -> number
+{
+    s: number = num1 + num2
+    while(a < 20){
+      a = a + 1
+      print(a)
+      if(a == 15){break}
+    }
+    return s + 10
+}
+print(soma(2, 3))</textarea>
+
+<textarea id="example-2">func fatorial(n: number) -> number
+{
+  if (n == 0 || n == 1)
+  {
+    return 1
+  }
+  else {
+    return n * fatorial(n - 1)
+  }
+}
+print("CALCULA O FATORIAL RECURSIVO")
+valor: number = 10
+print("Fatorial: ", fatorial(valor))</textarea>
+
+<textarea id="example-3">input_val: number = 1
+output_desire: number = 0
+input_weight: number = 0.5
+lr: number = 0.01
+func activation(sum: number) -> number
+{
+  if(sum >= 0){ return 1 } else { return 0 }
+}
+print("Entrada: ", input_val, " Desejado: ", output_desire)
+error: number = 1000.0
+iteration: number = 0
+bias: number = 1
+bias_weight: number = 0.5
+while(error != 0)
+{
+  iteration = iteration + 1
+  print("### Iteração: ", iteration)
+  print("Peso: ", input_weight)
+  sum: number = (input_val * input_weight) + (bias * bias_weight)
+  print("Sum:", activation(sum))
+  output: number = activation(sum)
+  print("Saída: ", output)
+  error = output_desire - output
+  print("Erro: ", error)
+  if (error != 0)
+  {
+    input_weight = input_weight + (lr * input_val * error)
+    print("Peso do bias: ", bias_weight)
+    bias_weight = bias_weight + (lr * bias * error)
+  }
+}
+print("Parabéns!! A Rede de um Neurônio Aprendeu")
+print("Valor desejado: ", output_desire)</textarea>
+
+<textarea id="example-4">func fatorial(x: number, y: number) -> void
+{
+  func fat(n: number) -> number{
+    prod: number = 1
+    i: number = 2
+    while(i <= n){
+      prod = prod * i
+      i = i + 1
+    }
+    return prod
+  }
+  i: number = x
+  while(i <= y)
+  {
+    print("Fatorial de:", i, "=", fat(i))
+    i = i + 1
+    sleep(0.5)
+  }
+}
+func fibonacci(n: number) -> void{
+  a: number = 0
+  b: number = 1
+  count: number = 0
+  while (count < n)
+  {
+    print("Fib:", a)
+    aux: number = a + b
+    a = b
+    b = aux
+    count = count + 1
+    sleep(0.5)
+  }
+}
+par{
+  fatorial(2, 5)
+  fibonacci(10)
+}</textarea>
+</div>
+
+<div class="example-loader">
+<select id="example-select">
+<option value="">-- Escolha um exemplo --</option>
+<option value="example-1">Soma</option>
+<option value="example-2">Fatorial</option>
+<option value="example-3">Neuronio</option>
+<option value="example-4">Paralelismo</option>
+</select>
+<button type="button" onclick="loadSelectedExample()">Carregar Exemplo</button>
+</div>
+
+<div class="editor-controls">
+<form method="post" action="/run" id="form-editor">
+<button type="submit">Executar</button>
+<button type="button" onclick="clearCode()">Limpar</button>
+<textarea name="code" id="code">{{ code | default("") }}</textarea>
+</form>
+</div>
+
+<div class="tabs">
+<div class="tab-buttons">
+<button type="button" onclick="showTab('exec')">Saída</button>
+<button type="button" onclick="showTab('ast')">AST</button>
+</div>
+<textarea id="exec" class="tab-content">{{ exec_result | default("") }}</textarea>
+<textarea id="ast" class="tab-content hidden">{{ ast_result | default("") }}</textarea>
+</div>
 
 <script src="/static/script.js"></script>
 </body>
